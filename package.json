@@ -1,0 +1,41 @@
+{
+	"name": "yieldkit",
+	"version": "0.0.0",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./async": {
+			"types": "./dist/async-generators.d.ts",
+			"import": "./dist/async-generators.js",
+			"default": "./dist/async-generators.js"
+		},
+		"./sync": {
+			"types": "./dist/sync-generators.d.ts",
+			"import": "./dist/sync-generators.js",
+			"default": "./dist/sync-generators.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run",
+		"check": "tsc -p tsconfig.json --noEmit"
+	},
+	"devDependencies": {
+		"@types/node": "^22.8.6",
+		"jsdom": "^25.0.1",
+		"typescript": "^5.6.3",
+		"vitest": "^2.1.9"
+	}
+}
