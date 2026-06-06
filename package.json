@@ -1,6 +1,6 @@
 {
 	"name": "yieldkit",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"license": "MIT",
 	"description": "Composable sync and async generator helpers for iterables and DOM events",
 	"repository": {
