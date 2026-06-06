@@ -6,10 +6,7 @@ export function* sequence<T>(...iterables: Iterable<T>[]): Generator<T> {
 	}
 }
 
-export function map<T>(
-	iterable: Iterable<T>,
-	mappers: Array<(value: T) => unknown>,
-): IterableIterator<unknown> {
+export function map<T>(iterable: Iterable<T>, mappers: Array<(value: T) => unknown>): IterableIterator<unknown> {
 	const collectionIterator = iterable[Symbol.iterator]();
 
 	return {
@@ -38,20 +35,11 @@ export function map<T>(
 	};
 }
 
-export function filter<T, S extends T>(
-	iterable: Iterable<T>,
-	onFilter: (value: T) => value is S,
-): Generator<S>;
+export function filter<T, S extends T>(iterable: Iterable<T>, onFilter: (value: T) => value is S): Generator<S>;
 
-export function filter<T>(
-	iterable: Iterable<T>,
-	onFilter: (value: T) => boolean,
-): Generator<T>;
+export function filter<T>(iterable: Iterable<T>, onFilter: (value: T) => boolean): Generator<T>;
 
-export function* filter<T>(
-	iterable: Iterable<T>,
-	onFilter: (value: T) => boolean,
-): Generator<T> {
+export function* filter<T>(iterable: Iterable<T>, onFilter: (value: T) => boolean): Generator<T> {
 	const iterator = iterable[Symbol.iterator]();
 
 	while (true) {
@@ -61,10 +49,7 @@ export function* filter<T>(
 	}
 }
 
-export function* every<T>(
-	iterable: Iterable<T>,
-	predicate: (value: T) => boolean,
-): Generator<T> {
+export function* every<T>(iterable: Iterable<T>, predicate: (value: T) => boolean): Generator<T> {
 	for (const value of iterable) {
 		if (!predicate(value)) break;
 		yield value;
@@ -112,9 +97,7 @@ export function* slice<T>(
 	}
 }
 
-export function enumerate<T>(
-	iterable: Iterable<T> | IterableIterator<T>,
-): IterableIterator<[number, T]> {
+export function enumerate<T>(iterable: Iterable<T> | IterableIterator<T>): IterableIterator<[number, T]> {
 	const iterator = iterable[Symbol.iterator]();
 	let cursor = 0;
 
@@ -138,18 +121,13 @@ export function enumerate<T>(
 	};
 }
 
-export function zip<T0, T1>(
-	a: Iterable<T0>,
-	b: Iterable<T1>,
-): IterableIterator<[T0, T1]>;
+export function zip(): IterableIterator<never>;
 
-export function zip<T>(
-	...iterables: [Iterable<T>, Iterable<T>, ...Iterable<T>[]]
-): IterableIterator<T[]>;
+export function zip<T0, T1>(a: Iterable<T0>, b: Iterable<T1>): IterableIterator<[T0, T1]>;
 
-export function zip(
-	...iterables: Iterable<unknown>[]
-): IterableIterator<unknown> {
+export function zip<T>(...iterables: [Iterable<T>, Iterable<T>, ...Iterable<T>[]]): IterableIterator<T[]>;
+
+export function zip(...iterables: Iterable<unknown>[]): IterableIterator<unknown> {
 	const iterators = iterables.map((iterable) => iterable[Symbol.iterator]());
 
 	return {
@@ -169,9 +147,7 @@ export function zip(
 			}
 
 			const value =
-				iterators.length === 2
-					? [results[0].value, results[1].value]
-					: results.map((result) => result.value);
+				iterators.length === 2 ? [results[0].value, results[1].value] : results.map((result) => result.value);
 
 			return { done: false, value };
 		},

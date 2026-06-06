@@ -139,7 +139,7 @@ Available helpers:
 - `sequence(...iterables)` yields each async iterable in order.
 - `filter(iterable, predicate)` yields values that pass a predicate. Supports type-predicate narrowing with `onlyEvent`.
 - `every(iterable, predicate)` yields values until the predicate fails.
-- `any(...iterables)` yields whichever async iterable resolves first.
+- `any(...iterables)` merges multiple async iterables by racing for the next value on each step. It keeps yielding until every source is exhausted — not when the first one finishes. Use `take(any(...), 1)` for a one-shot race.
 - `take(iterable, count)` yields a fixed number of values, stopping early if the source ends.
 - `map(iterable, mappers)` applies a pipeline of mapper functions to each value.
 - `slice(iterable, start, stop, step?)` yields a sliced range of values.
@@ -204,10 +204,23 @@ Run tests:
 npm test
 ```
 
-Run TypeScript checks:
+Run TypeScript checks and linters:
 
 ```sh
 npm run check
+```
+
+Lint only:
+
+```sh
+npm run lint
+```
+
+Format and auto-fix with Biome:
+
+```sh
+npm run format
+npm run lint:fix
 ```
 
 Build the package:

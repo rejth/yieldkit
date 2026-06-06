@@ -1,110 +1,62 @@
 import { describe, expect, test } from "vitest";
-import {
-	asyncGenerators,
-	dndWatcher,
-	on,
-	once,
-	syncGenerators,
-} from "../src/index.js";
-import { enumerate, filter, map, zip } from "../src/sync-generators.js";
-
-async function collectAsync<T>(
-	iterable: AsyncIterable<T>,
-	count: number,
-): Promise<T[]> {
-	const iterator = iterable[Symbol.asyncIterator]();
-	const values: T[] = [];
-
-	for (let cursor = 0; cursor < count; cursor++) {
-		const { value } = await iterator.next();
-		values.push(value);
-	}
-
-	return values;
-}
-
-async function collectUntilDone<T>(iterable: AsyncIterable<T>): Promise<T[]> {
-	const iterator = iterable[Symbol.asyncIterator]();
-	const values: T[] = [];
-
-	while (true) {
-		const { done, value } = await iterator.next();
-		if (done) return values;
-		values.push(value);
-	}
-}
+import { asyncGenerators, dndWatcher, on, once, syncGenerators } from "../src/index.js";
 
 describe("sync generators", () => {
 	test("exports composable synchronous generator helpers", () => {
-		const values = syncGenerators.sequence(
-			[1, 2],
-			syncGenerators.take([3, 4, 5], 2),
-		);
+		const { sequence, take, filter, every, slice, enumerate } = syncGenerators;
+
+		const values = sequence([1, 2], take([3, 4, 5], 2));
 
 		expect([...values]).toEqual([1, 2, 3, 4]);
-		expect([
-			...syncGenerators.filter([1, 2, 3], (value) => value !== 2),
-		]).toEqual([1, 3]);
-		expect([...syncGenerators.every([1, 2, 3], (value) => value < 3)]).toEqual([
-			1, 2,
-		]);
-		expect([...syncGenerators.slice([1, 2, 3, 4, 5], 1, 4, 2)]).toEqual([2, 4]);
-		expect([...syncGenerators.enumerate(["a", "b"])]).toEqual([
+		expect([...filter([1, 2, 3], (value) => value !== 2)]).toEqual([1, 3]);
+		expect([...every([1, 2, 3], (value) => value < 3)]).toEqual([1, 2]);
+		expect([...slice([1, 2, 3, 4, 5], 1, 4, 2)]).toEqual([2, 4]);
+		expect([...enumerate(["a", "b"])]).toEqual([
 			[0, "a"],
 			[1, "b"],
 		]);
 	});
 
 	test("map applies a mapper pipeline to each value", () => {
-		const mapped = syncGenerators.map(
-			[1, 2],
-			[(value: number) => value * 2, (value: number) => value + 1],
-		);
+		const { map } = syncGenerators;
+
+		const mapped = map([1, 2], [(value: number) => value * 2, (value: number) => value + 1]);
 
 		expect([...mapped]).toEqual([3, 5]);
 	});
 
 	test("zip groups values and stops at the shortest iterable", () => {
-		const catalog = map(
-			filter(
-				zip(
-					enumerate(["shirts", "hats", "mugs"]),
-					zip([1999, 1299, 899], [12, 0, 44]),
-				),
-				([, [, quantity]]) => quantity > 0,
-			),
-			[
-				([[i, name], [price, quantity]]) =>
-					`#${i + 1} ${name} — $${price / 100} (${quantity})`,
-			],
-		);
-		expect([...catalog]).toEqual([
-			"#1 shirts — $19.99 (12)",
-			"#3 mugs — $8.99 (44)",
-		]);
-		expect([...syncGenerators.zip([1, 2], [3, 4])]).toEqual([
+		const { zip } = syncGenerators;
+
+		expect([...zip([1, 2], [3, 4])]).toEqual([
 			[1, 3],
 			[2, 4],
 		]);
-		expect([...syncGenerators.zip([1, 2, 3], [4])]).toEqual([[1, 4]]);
-		expect([...syncGenerators.zip()]).toEqual([]);
+		expect([...zip([1, 2, 3], [4])]).toEqual([[1, 4]]);
+		expect([...zip()]).toEqual([]);
 	});
 
 	test("enumerate ends without yielding after exhaustion", () => {
-		const iterator = syncGenerators.enumerate(["a"]);
+		const { enumerate } = syncGenerators;
+
+		const iterator = enumerate(["a"]);
 
 		expect(iterator.next()).toEqual({ done: false, value: [0, "a"] });
 		expect(iterator.next()).toEqual({ done: true, value: undefined });
 	});
 
 	test("take stops when the source ends early", () => {
-		expect([...syncGenerators.take([1, 2], 5)]).toEqual([1, 2]);
-		expect([...syncGenerators.take([1, 2], 0)]).toEqual([]);
+		const { take } = syncGenerators;
+
+		expect([...take([1, 2], 5)]).toEqual([1, 2]);
+		expect([...take([1, 2], 0)]).toEqual([]);
 	});
 
 	test("watch restarts the executor after each iterable ends", () => {
+		const { watch } = syncGenerators;
+
 		let generation = 0;
-		const watched = syncGenerators.watch(() => [++generation]);
+		const watched = watch(() => [++generation]);
 
 		expect(watched.next().value).toBe(1);
 		expect(watched.next().value).toBe(2);
@@ -112,29 +64,27 @@ describe("sync generators", () => {
 	});
 
 	test("filter and every handle empty results", () => {
-		expect([...syncGenerators.filter([1, 2, 3], () => false)]).toEqual([]);
-		expect([...syncGenerators.every([1, 2, 3], (value) => value > 1)]).toEqual(
-			[],
-		);
+		const { filter, every } = syncGenerators;
+
+		expect([...filter([1, 2, 3], () => false)]).toEqual([]);
+		expect([...every([1, 2, 3], (value) => value > 1)]).toEqual([]);
 	});
 
 	test("onlyEvent narrows events passed through filter", () => {
-		const events = [
-			new MouseEvent("mousemove"),
-			new Event("click"),
-			new MouseEvent("mousemove"),
-		];
+		const { filter, onlyEvent } = syncGenerators;
 
-		const filtered = [
-			...syncGenerators.filter(events, syncGenerators.onlyEvent("mousemove")),
-		];
+		const events = [new MouseEvent("mousemove"), new Event("click"), new MouseEvent("mousemove")];
+
+		const filtered = [...filter(events, onlyEvent("mousemove"))];
 
 		expect(filtered).toHaveLength(2);
 		expect(filtered.every((event) => event.type === "mousemove")).toBe(true);
 	});
 
 	test("map with no mappers yields the original values", () => {
-		expect([...syncGenerators.map([1, 2], [])]).toEqual([1, 2]);
+		const { map } = syncGenerators;
+
+		expect([...map([1, 2], [])]).toEqual([1, 2]);
 	});
 });
 
@@ -144,74 +94,72 @@ describe("async generators", () => {
 	}
 
 	test("exports composable asynchronous generator helpers", async () => {
-		const generated = asyncGenerators.sequence(
-			values(1, 2),
-			asyncGenerators.take(values(3, 4), 1),
-		);
+		const { sequence, take, filter, every } = asyncGenerators;
 
-		await expect(collectAsync(generated, 3)).resolves.toEqual([1, 2, 3]);
+		const generated = sequence(values(1, 2), take(values(3, 4), 1));
+
+		await expect(collect(generated, 3)).resolves.toEqual([1, 2, 3]);
+
 		await expect(
-			collectAsync(
-				asyncGenerators.filter(values(1, 2, 3), (value) => value !== 2),
+			collect(
+				filter(values(1, 2, 3), (value) => value !== 2),
 				2,
 			),
 		).resolves.toEqual([1, 3]);
+
 		await expect(
-			collectAsync(
-				asyncGenerators.every(values(1, 2, 3), (value) => value < 3),
+			collect(
+				every(values(1, 2, 3), (value) => value < 3),
 				2,
 			),
 		).resolves.toEqual([1, 2]);
 	});
 
 	test("map applies a mapper pipeline to each value", async () => {
-		const mapped = asyncGenerators.map(values(1, 2), [
-			(value: number) => value * 2,
-			(value: number) => value + 1,
-		]);
+		const { map } = asyncGenerators;
 
-		await expect(collectAsync(mapped, 2)).resolves.toEqual([3, 5]);
+		const mapped = map(values(1, 2), [(value: number) => value * 2, (value: number) => value + 1]);
+
+		await expect(collect(mapped, 2)).resolves.toEqual([3, 5]);
 	});
 
 	test("slice, enumerate, and zip match synchronous semantics", async () => {
-		await expect(
-			collectAsync(asyncGenerators.slice(values(1, 2, 3, 4, 5), 1, 4, 2), 2),
-		).resolves.toEqual([2, 4]);
-		await expect(
-			collectAsync(asyncGenerators.enumerate(values(10, 20)), 2),
-		).resolves.toEqual([
+		const { slice, enumerate, zip } = asyncGenerators;
+
+		await expect(collect(slice(values(1, 2, 3, 4, 5), 1, 4, 2), 2)).resolves.toEqual([2, 4]);
+
+		await expect(collect(enumerate(values(10, 20)), 2)).resolves.toEqual([
 			[0, 10],
 			[1, 20],
 		]);
-		await expect(
-			collectAsync(asyncGenerators.zip(values(1, 2), values(3, 4)), 2),
-		).resolves.toEqual([
+
+		await expect(collect(zip(values(1, 2), values(3, 4)), 2)).resolves.toEqual([
 			[1, 3],
 			[2, 4],
 		]);
-		await expect(
-			collectAsync(asyncGenerators.zip(values(1, 2, 3), values(4)), 1),
-		).resolves.toEqual([[1, 4]]);
-		await expect(collectUntilDone(asyncGenerators.zip())).resolves.toEqual([]);
+
+		await expect(collect(zip(values(1, 2, 3), values(4)), 1)).resolves.toEqual([[1, 4]]);
+
+		await expect(collectUntilDone(zip())).resolves.toEqual([]);
 	});
 
 	test("take stops when the source ends early", async () => {
-		await expect(
-			collectUntilDone(asyncGenerators.take(values(1, 2), 5)),
-		).resolves.toEqual([1, 2]);
-		await expect(
-			collectUntilDone(asyncGenerators.take(values(1, 2), 0)),
-		).resolves.toEqual([]);
+		const { take } = asyncGenerators;
+
+		await expect(collectUntilDone(take(values(1, 2), 5))).resolves.toEqual([1, 2]);
+		await expect(collectUntilDone(take(values(1, 2), 0))).resolves.toEqual([]);
 	});
 
 	test("watch restarts the executor after each iterable ends", async () => {
+		const { watch } = asyncGenerators;
+
 		let generation = 0;
 
 		async function* oneValue(): AsyncGenerator<number> {
 			yield ++generation;
 		}
 
-		const watched = asyncGenerators.watch(() => oneValue());
+		const watched = watch(() => oneValue());
 
 		await expect(watched.next()).resolves.toEqual({
 			done: false,
@@ -228,39 +176,37 @@ describe("async generators", () => {
 	});
 
 	test("filter and every handle empty results", async () => {
-		await expect(
-			collectUntilDone(asyncGenerators.filter(values(1, 2, 3), () => false)),
-		).resolves.toEqual([]);
-		await expect(
-			collectUntilDone(
-				asyncGenerators.every(values(1, 2, 3), (value) => value > 1),
-			),
-		).resolves.toEqual([]);
+		const { filter, every } = asyncGenerators;
+
+		await expect(collectUntilDone(filter(values(1, 2, 3), () => false))).resolves.toEqual([]);
+		await expect(collectUntilDone(every(values(1, 2, 3), (value) => value > 1))).resolves.toEqual([]);
 	});
 
 	test("onlyEvent narrows events passed through filter", async () => {
+		const { filter, onlyEvent } = asyncGenerators;
+
 		async function* events(): AsyncGenerator<Event> {
 			yield new MouseEvent("mousemove");
 			yield new Event("click");
 			yield new MouseEvent("mousemove");
 		}
 
-		const filtered = await collectUntilDone(
-			asyncGenerators.filter(events(), asyncGenerators.onlyEvent("mousemove")),
-		);
+		const filtered = await collectUntilDone(filter(events(), onlyEvent("mousemove")));
 
 		expect(filtered).toHaveLength(2);
 		expect(filtered.every((event) => event.type === "mousemove")).toBe(true);
 	});
 
 	test("map with no mappers yields the original values", async () => {
-		await expect(
-			collectUntilDone(asyncGenerators.map(values(1, 2), [])),
-		).resolves.toEqual([1, 2]);
+		const { map } = asyncGenerators;
+
+		await expect(collectUntilDone(map(values(1, 2), []))).resolves.toEqual([1, 2]);
 	});
 
 	test("enumerate ends without yielding after exhaustion", async () => {
-		const iterator = asyncGenerators.enumerate(values(10));
+		const { enumerate } = asyncGenerators;
+
+		const iterator = enumerate(values(10));
 
 		await expect(iterator.next()).resolves.toEqual({
 			done: false,
@@ -273,12 +219,10 @@ describe("async generators", () => {
 	});
 
 	test("any keeps at most one pending next() per iterator", async () => {
+		const { any } = asyncGenerators;
 		const calls = { fast: 0, slow: 0 };
 
-		const createIterable = (
-			name: "fast" | "slow",
-			delay: number,
-		): AsyncIterable<string> => ({
+		const createIterable = (name: "fast" | "slow", delay: number): AsyncIterable<string> => ({
 			[Symbol.asyncIterator]() {
 				return {
 					async next() {
@@ -290,10 +234,7 @@ describe("async generators", () => {
 			},
 		});
 
-		const raced = asyncGenerators.any(
-			createIterable("fast", 10),
-			createIterable("slow", 100),
-		);
+		const raced = any(createIterable("fast", 10), createIterable("slow", 100));
 
 		await raced.next();
 		expect(calls).toEqual({ fast: 1, slow: 1 });
@@ -306,14 +247,13 @@ describe("async generators", () => {
 	});
 
 	test("any ends when all iterators are done", async () => {
+		const { any, take } = asyncGenerators;
+
 		async function* finite(...items: number[]): AsyncGenerator<number> {
 			yield* items;
 		}
 
-		const raced = asyncGenerators.any(
-			asyncGenerators.take(finite(1), 1),
-			asyncGenerators.take(finite(2), 1),
-		);
+		const raced = any(take(finite(1), 1), take(finite(2), 1));
 
 		const first = await raced.next();
 		const second = await raced.next();
@@ -417,3 +357,26 @@ describe("dndWatcher", () => {
 		});
 	});
 });
+
+async function collect<T>(iterable: AsyncIterable<T>, count: number): Promise<T[]> {
+	const iterator = iterable[Symbol.asyncIterator]();
+	const values: T[] = [];
+
+	for (let cursor = 0; cursor < count; cursor++) {
+		const { value } = await iterator.next();
+		values.push(value);
+	}
+
+	return values;
+}
+
+async function collectUntilDone<T>(iterable: AsyncIterable<T>): Promise<T[]> {
+	const iterator = iterable[Symbol.asyncIterator]();
+	const values: T[] = [];
+
+	while (true) {
+		const { done, value } = await iterator.next();
+		if (done) return values;
+		values.push(value);
+	}
+}

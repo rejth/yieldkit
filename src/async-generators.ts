@@ -1,6 +1,4 @@
-export async function* sequence<T>(
-	...asyncIterables: AsyncIterable<T>[]
-): AsyncGenerator<T> {
+export async function* sequence<T>(...asyncIterables: AsyncIterable<T>[]): AsyncGenerator<T> {
 	for (const iterable of asyncIterables) {
 		for await (const item of iterable) {
 			yield item;
@@ -31,15 +29,9 @@ export function filter<T, S extends T>(
 	onFilter: (value: T) => value is S,
 ): AsyncGenerator<S>;
 
-export function filter<T>(
-	asyncIterable: AsyncIterable<T>,
-	onFilter: (value: T) => boolean,
-): AsyncGenerator<T>;
+export function filter<T>(asyncIterable: AsyncIterable<T>, onFilter: (value: T) => boolean): AsyncGenerator<T>;
 
-export async function* filter<T>(
-	asyncIterable: AsyncIterable<T>,
-	onFilter: (value: T) => boolean,
-): AsyncGenerator<T> {
+export async function* filter<T>(asyncIterable: AsyncIterable<T>, onFilter: (value: T) => boolean): AsyncGenerator<T> {
 	const asyncIterator = asyncIterable[Symbol.asyncIterator]();
 
 	while (true) {
@@ -49,19 +41,14 @@ export async function* filter<T>(
 	}
 }
 
-export async function* every<T>(
-	asyncIterable: AsyncIterable<T>,
-	predicate: (value: T) => boolean,
-): AsyncGenerator<T> {
+export async function* every<T>(asyncIterable: AsyncIterable<T>, predicate: (value: T) => boolean): AsyncGenerator<T> {
 	for await (const value of asyncIterable) {
 		if (!predicate(value)) break;
 		yield value;
 	}
 }
 
-export async function* any<T>(
-	...asyncIterables: AsyncIterable<T>[]
-): AsyncGenerator<T> {
+export async function* any<T>(...asyncIterables: AsyncIterable<T>[]): AsyncGenerator<T> {
 	type Entry = {
 		iterator: AsyncIterator<T>;
 		pending?: Promise<IteratorResult<T>>;
@@ -89,10 +76,7 @@ export async function* any<T>(
 	}
 }
 
-export async function* take<T>(
-	asyncIterable: AsyncIterable<T>,
-	count: number,
-): AsyncGenerator<T> {
+export async function* take<T>(asyncIterable: AsyncIterable<T>, count: number): AsyncGenerator<T> {
 	const asyncIterator = asyncIterable[Symbol.asyncIterator]();
 	let cursor = 0;
 
@@ -149,30 +133,23 @@ export async function* enumerate<T>(
 	}
 }
 
-export function zip<T0, T1>(
-	a: AsyncIterable<T0>,
-	b: AsyncIterable<T1>,
-): AsyncGenerator<[T0, T1]>;
+export function zip(): AsyncGenerator<never>;
+
+export function zip<T0, T1>(a: AsyncIterable<T0>, b: AsyncIterable<T1>): AsyncGenerator<[T0, T1]>;
 
 export function zip<T>(
 	...asyncIterables: [AsyncIterable<T>, AsyncIterable<T>, ...AsyncIterable<T>[]]
 ): AsyncGenerator<T[]>;
 
-export async function* zip(
-	...asyncIterables: AsyncIterable<unknown>[]
-): AsyncGenerator<unknown> {
-	const iterators = asyncIterables.map((iterable) =>
-		iterable[Symbol.asyncIterator](),
-	);
+export async function* zip(...asyncIterables: AsyncIterable<unknown>[]): AsyncGenerator<unknown> {
+	const iterators = asyncIterables.map((iterable) => iterable[Symbol.asyncIterator]());
 
 	if (iterators.length === 0) {
 		return;
 	}
 
 	while (true) {
-		const results = await Promise.all(
-			iterators.map((iterator) => iterator.next()),
-		);
+		const results = await Promise.all(iterators.map((iterator) => iterator.next()));
 
 		if (results.some((result) => result.done)) {
 			return;
@@ -186,9 +163,7 @@ export async function* zip(
 	}
 }
 
-export async function* watch<T>(
-	executor: () => AsyncIterable<T>,
-): AsyncGenerator<T> {
+export async function* watch<T>(executor: () => AsyncIterable<T>): AsyncGenerator<T> {
 	while (true) {
 		for await (const value of executor()) {
 			yield value;
